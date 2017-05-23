@@ -343,137 +343,15 @@ document.addEventListener( "DOMContentLoaded", function () {
 
 })( Fancy );*/
 
-(function ( global ) {
-    const privates = new WeakMap();
-    const modules  = {};
-    var loaded     = [];
 
-    function getCurrentScript() {
-        return getCaller();
-    }
-
-    function getCaller() {
-        return getStack()
-    }
-
-    function getStack() {
-        // Save original Error.prepareStackTrace
-        var origPrepareStackTrace = Error.prepareStackTrace;
-
-        // Override with function that just returns `stack`
-        Error.prepareStackTrace = function ( _, stack ) {
-            return stack[ stack.length - 1 ]
-        };
-        // Create a new `Error`, which automatically gets `stack`
-        var err                 = new Error();
-
-        // Evaluate `err.stack`, which calls our new `Error.prepareStackTrace`
-        var stack               = err.stack;
-        // Restore original `Error.prepareStackTrace`
-        Error.prepareStackTrace = origPrepareStackTrace;
-
-        return stack
-    }
-
-
-    class Module {
-        constructor( fn ) {
-            this.module       = fn;
-            var currentScript = getCurrentScript();
-            var scriptPath    = currentScript.getFileName();
-            privates.set( this, {
-                files : [],
-                script: scriptPath
-            } );
-            if ( !modules[ scriptPath ] ) {
-                modules[ scriptPath ] = [];
-            }
-            modules[ scriptPath ].push( this );
-        }
-
-        install() {
-            if ( privates.get( this ).installed ) {
-                return new Promise( resolve => {
-                    resolve( this.response );
-                } );
-            }
-            privates.get( this ).installed = true;
-
-            var files    = privates.get( this ).files;
-            var promises = [];
-            return new Promise( resolve => {
-                files.forEach( file => {
-                    promises.push( new Promise( function ( resolve ) {
-                        var script    = document.createElement( "script" );
-                        script.src    = file;
-                        script.onload = () => {
-                            var mods = [];
-                            if ( modules[ file ] ) {
-                                modules[ file ].forEach( mod => {
-                                    mods.push( mod.install() );
-                                } );
-                            }
-                            Promise.all( mods ).then( function ( modules ) {
-                                resolve( modules )
-                            } );
-                        };
-                        document.head.appendChild( script );
-                    } ) );
-                } );
-                Promise.all( promises ).then( response => {
-                    var mods = [];
-                    response.forEach( list => mods = mods.concat( list ) );
-                    this.response = this.module.apply( null, mods );
-                    resolve( this.response );
-                } );
-            } );
-        }
-
-        require( ...path ) {
-            var rootPath = privates.get( this ).script;
-            path.forEach( file => {
-                var root = rootPath.split( "/" );
-                root.pop();
-                var parts = file.split( "/" );
-                var path  = "";
-                parts.forEach( part => {
-                    if ( part === ".." ) {
-                        root.splice( root.length - 1, 1 );
-                    } else {
-                        path += "/" + part;
-                    }
-                } );
-                var filePath = root.join( "/" ) + path;
-                if ( !~loaded.indexOf( filePath ) ) {
-                    loaded.push( filePath );
-                    privates.get( this ).files.push( filePath );
-                } else {
-                    // TODO add listener to script to inject module
-                    console.warn( filePath, "already requested" )
-                }
-            } );
-            return this;
-        }
-    }
-    document.addEventListener( "DOMContentLoaded", function () {
-        for ( let path in modules ) {
-            if ( modules.hasOwnProperty( path ) ) {
-                modules[ path ].forEach( module => {
-                    module.install();
-                } );
-            }
-        }
-    } );
-    global.Module = Module;
-})( window );
-
-new Module( function ( service, s1, s2 ) {
-    console.log( service, TEST, s1, s2 );
+new Module( function init( Service, s1, s2 ) {
+    console.log( Service, TEST, s1, s2 );
 } ).require( "../programs/test/install.js" ).require( "../programs/test/main.js" );
+Module.verbose(  );
 
 
 setTimeout( function () {
     window.__ = new Module( function ( service ) {
         console.log( service );
-    } ).require( "../programs/test/later.js" );
+    }, "Service" ).require( "../programs/test/later.js" );
 }, 4000 );

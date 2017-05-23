@@ -1,4 +1,4 @@
-new Module( function () {
+new Module( "General", function () {
     return { test(){} }
 } );
 
