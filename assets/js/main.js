@@ -393,7 +393,9 @@ document.addEventListener( "DOMContentLoaded", function () {
 
         install() {
             if ( privates.get( this ).installed ) {
-                return false;
+                return new Promise( resolve => {
+                    resolve( this.response );
+                } );
             }
             privates.get( this ).installed = true;
 
@@ -421,7 +423,8 @@ document.addEventListener( "DOMContentLoaded", function () {
                 Promise.all( promises ).then( response => {
                     var mods = [];
                     response.forEach( list => mods = mods.concat( list ) );
-                    resolve( this.module.apply( null, mods ) );
+                    this.response = this.module.apply( null, mods );
+                    resolve( this.response );
                 } );
             } );
         }
