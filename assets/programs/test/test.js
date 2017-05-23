@@ -1,1 +1,3 @@
-var TEST = 1;
+new Module( function () {
+    return "s3";
+} );

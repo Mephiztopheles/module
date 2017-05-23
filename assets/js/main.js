@@ -448,6 +448,7 @@ document.addEventListener( "DOMContentLoaded", function () {
                     loaded.push( filePath );
                     privates.get( this ).files.push( filePath );
                 } else {
+                    // TODO add listener to script to inject module
                     console.warn( filePath, "already requested" )
                 }
             } );

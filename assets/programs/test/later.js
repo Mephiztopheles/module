@@ -3,3 +3,5 @@ new Module( function () {
 
     }
 } );
+
+console.log("later");
