@@ -346,12 +346,13 @@ document.addEventListener( "DOMContentLoaded", function () {
 
 new Module( function init( Service, s1, s2 ) {
     console.log( Service, TEST, s1, s2 );
-} ).require( "../programs/test/install.js" ).require( "../programs/test/main.js" );
-Module.verbose(  );
+    return true;
+}, "General" ).require( "../programs/test/install", "../programs/test/main", "../programs/Explorer/HasMany" );
+Module.verbose();
 
 
 setTimeout( function () {
-    window.__ = new Module( function ( service ) {
-        console.log( service );
-    }, "Service" ).require( "../programs/test/later.js" );
+    window.__ = new Module( function ( service, init ) {
+        console.log( service, init );
+    }, "Service", "init" ).require( "../programs/test/later.js" );
 }, 4000 );

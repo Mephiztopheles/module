@@ -140,6 +140,9 @@
                         path += "/" + part;
                     }
                 } );
+                if ( !path.match( /\.js$/ ) ) {
+                    path += ".js";
+                }
                 privates.get( this ).files.push( root.join( "/" ) + path );
             } );
             return this;
