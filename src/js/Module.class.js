@@ -60,15 +60,12 @@
 
         install() {
             if ( privates.get( this ).installed ) {
-                return new Promise( resolve => {
-                    resolve( this.response );
-                } );
+                return privates.get( this ).installed;
             }
-            privates.get( this ).installed = true;
 
             let files    = privates.get( this ).files;
             let promises = [];
-            return new Promise( resolve => {
+            return privates.get( this ).installed = new Promise( resolve => {
                 files.forEach( file => {
                     if ( loaded[ file ] ) {
                         promises.push( loaded[ file ] );
@@ -77,10 +74,10 @@
                             console.warn( this.name, split[ split.length - 1 ], "already installed" );
                         }
                     } else {
-                        let promise    = new Promise( function ( resolve ) {
-                            let script    = document.createElement( "script" );
-                            script.src    = file;
-                            script.onload = () => {
+                        let promise    = new Promise( resolve => {
+                            let script     = document.createElement( "script" );
+                            script.src     = file;
+                            script.onload  = () => {
                                 let mods = [];
                                 if ( modules[ file ] ) {
                                     modules[ file ].forEach( mod => {
@@ -91,6 +88,9 @@
                                     resolve( modules )
                                 } );
                             };
+                            script.onerror = () => {
+                                throw `InstallError: (${this.name}) Script ${file} not found`;
+                            };
                             document.head.appendChild( script );
                         } );
                         loaded[ file ] = promise;
@@ -98,10 +98,11 @@
                     }
                 } );
                 Promise.all( promises ).then( response => {
-                    let mods       = [];
-                    let injections = privates.get( this ).injections;
+                    let mods              = [];
+                    let injections        = privates.get( this ).injections;
+                    var injectionPromises = [];
                     if ( injections.length ) {
-                        injections.forEach( name => {
+                        injections.forEach( ( name, index ) => {
                             let mod;
                             for ( let file in modules ) {
                                 mod = modules[ file ].find( item => item.name === name );
@@ -110,9 +111,18 @@
                                 }
                             }
                             if ( mod ) {
-                                mods.push( mod.response );
+                                if ( mod.hasOwnProperty( "response" ) ) {
+                                    mods[ index ] = mod.response;
+                                } else {
+                                    injectionPromises.push( new Promise( resolve => {
+                                        mod.install().then( () => {
+                                            mods[ index ] = mod.response;
+                                            resolve( mod.response );
+                                        } )
+                                    } ) );
+                                }
                             } else {
-                                throw new Error( "Error while installing Module " + this.name + ": Module " + name + " not found" );
+                                throw `Error while installing module ${this.name}: module ${name} not found`;
                             }
                         } );
                     } else {
@@ -120,14 +130,24 @@
                             mods = mods.concat( list )
                         } );
                     }
-                    this.response = this.module.apply( null, mods );
-                    resolve( this.response );
+                    Promise.all( injectionPromises ).then( () => {
+                        this.response = this.module.apply( null, mods );
+                        if ( verbose ) {
+                            console.groupCollapsed( `Module "${this.name}" loaded` );
+                            console.log( this.response );
+                            console.groupEnd();
+                        }
+                        resolve( this.response );
+                    } )
                 } );
             } );
         }
 
         require( ...path ) {
             let rootPath = privates.get( this ).script;
+            if ( Array.isArray( path[ 0 ] ) ) {
+                path = path[ 0 ];
+            }
             path.forEach( file => {
                 let root = rootPath.split( "/" );
                 root.pop();
